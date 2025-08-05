@@ -209,15 +209,3 @@ if uploaded_file:
         combined_df.to_sql(TABLE_NAME, engine, if_exists="replace", index=False)
         st.success("Master data saved successfully!")
         st.success(f"Master data now has {len(combined_df)} total movements.")
-
-
-
-# Next time you want to run your app:
-# cd path/to/project_folder
-# source venv/bin/activate
-# streamlit run expense_tracker.py
-# db psw = PT14TU4bJ2RJMrye
-# prj name = Mattia's finances
-# project URL = https://hkaebwsyrgkfkmyjqfdr.supabase.co
-# API key = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrYWVid3N5cmdrZmtteWpxZmRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQzMzc2MzgsImV4cCI6MjA2OTkxMzYzOH0.JrzfN-8-VJkJYh6bVwahSU9iS8mj9BW1mvAnlW3y4MY
-# postgresql://postgres:PT14TU4bJ2RJMrye@db.hkaebwsyrgkfkmyjqfdr.supabase.co:5432/postgres
