@@ -25,7 +25,7 @@ else:
 # --------------------------
 # Upload New Data
 # --------------------------
-uploaded_file = st.file_uploader("Upload your bank Excel file (.xls or .xlsx)", type=["xls", "xlsx"])
+uploaded_file = st.file_uploader("Upload your bank Excel file (.xls or .xlsx or .numbers)", type=["xls", "xlsx", "numbers"])
 
 if uploaded_file:
     # --- Load and Clean New Data ---
@@ -188,7 +188,7 @@ if uploaded_file:
         df_display = df[["Data", "Operazione", "Categoria", "Importo"]].copy()
 
         # Format date without hours
-        df_display["Data"] = df_display["Data"].dt.strftime("%Y/%m/%d")
+        df_display["Data"] = df_display["Data"].dt.strftime("%d/%m/%Y")
 
         # Style negative and positive amounts
         def color_amount(val):
