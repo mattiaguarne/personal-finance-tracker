@@ -37,7 +37,7 @@ if uploaded_file:
     df_new = df_new[["Data", "Operazione", "Categoria", "Importo"]].copy()
     
     # Parse types
-    df_new["Data"] = pd.to_datetime(df_new["Data"], errors="coerce")
+    df_new["Data"] = pd.to_datetime(df_new["Data"], errors="coerce", dayfirst=True, format="%d-%m-Y%")
     df_new["Importo"] = pd.to_numeric(df_new["Importo"], errors="coerce")
     df_new = df_new.dropna(subset=["Data", "Importo"]).sort_values("Data")
     
@@ -174,7 +174,7 @@ if uploaded_file:
 
     # Bar Chart: Income vs Expenses (Streamlit)
     st.write("### Income vs Expenses per Personal Month")
-    st.bar_chart(monthly_summary[["Income", "Expenses"]],color=["#E73039FF", "#25C025FF"])
+    st.bar_chart(monthly_summary[["Expenses", "Income"]],color=["#E73039FF", "#25C025FF"])
 
     # --------------------------
     # Transactions Table
