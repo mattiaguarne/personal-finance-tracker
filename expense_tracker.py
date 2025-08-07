@@ -43,9 +43,6 @@ if uploaded_file:
     
     # --- Merge with Master and Drop Duplicates ---
     combined_df = pd.concat([master_df, df_new], ignore_index=True)
-    # combined_df = combined_df.drop_duplicates(
-    #     subset=["Data", "Operazione", "Importo"], keep="last"
-    # ).sort_values("Data").reset_index(drop=True)
     combined_df = combined_df.sort_values("Data").reset_index(drop=True)
 
     # --- Detect Salary-Based Months ---
