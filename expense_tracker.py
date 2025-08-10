@@ -57,7 +57,7 @@ if "user" not in st.session_state:
 # ----------------------------
 # MAIN APP (User logged in)
 # ----------------------------
-st.title(f"📊 Balance Your Way - Welcome {st.session_state.user.email}!")
+st.title(f"🏦 Balance Your Way - Welcome {st.session_state.user.email}!")
 
 if "combined_df" not in st.session_state:
     st.session_state.combined_df = pd.DataFrame(columns=["Data", "Operazione", "Categoria", "Importo"])
