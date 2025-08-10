@@ -5,8 +5,7 @@ import plotly.express as px
 import os
 from sqlalchemy import create_engine
 
-
-st.set_page_config(page_title="Personal Expense Tracker", layout="wide")
+st.set_page_config(page_title="Personal Expense Tracker", page_icon="/images/byw_logo.png", layout="wide")
 st.title("📊 Personal Expense Tracker")
 
 # MASTER_FILE = "transactions_master.parquet"
@@ -14,36 +13,47 @@ db_url = st.secrets["DB_URL"]
 engine = create_engine(db_url)
 TABLE_NAME = "transactions"
 
-# --------------------------
-# Load from DB or create empty DataFrame
-# --------------------------
+if "combined_df" not in st.session_state:
+    st.session_state.combined_df = pd.DataFrame(columns=["Data", "Operazione", "Categoria", "Importo"])
+
+# -----------------------------------
+# Load from DB Button
+# -----------------------------------
+
 if engine.dialect.has_table(engine.connect(), TABLE_NAME):
-    master_df = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", engine)
+    df_loaded = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", engine)
+    df_loaded["Data"] = pd.to_datetime(df_loaded["Data"], errors="coerce")
+    st.session_state.combined_df = df_loaded
 else:
-    master_df = pd.DataFrame(columns=["Data", "Operazione", "Categoria", "Importo"])
+    st.warning("⚠️ No data found in the database.")
+
+# Use the session state version for all logic
+combined_df = st.session_state.combined_df
 
 # --------------------------
 # Upload New Data
 # --------------------------
-uploaded_file = st.file_uploader("Upload your bank Excel file (.xls or .xlsx or .numbers)", type=["xls", "xlsx", "numbers"])
+uploaded_file = st.file_uploader("Upload your bank Excel file (.xls or .xlsx)", type=["xls", "xlsx", "numbers"])
 
-if uploaded_file:
+
+if uploaded_file or not combined_df.empty:
     # --- Load and Clean New Data ---
-    df_raw = pd.read_excel(uploaded_file, sheet_name="Lista Operazione", header=None)
-    header_row = df_raw.index[df_raw.iloc[:, 0].astype(str).str.contains("Data", na=False)][0]
+    if uploaded_file:
+        df_raw = pd.read_excel(uploaded_file, sheet_name="Lista Operazione", header=None)
+        header_row = df_raw.index[df_raw.iloc[:, 0].astype(str).str.contains("Data", na=False)][0]
+        
+        df_new = pd.read_excel(uploaded_file, sheet_name="Lista Operazione", header=header_row)
+        df_new = df_new.rename(columns=lambda x: x.strip())
+        df_new = df_new[["Data", "Operazione", "Categoria", "Importo"]].copy()
+        
+        # Parse types
+        df_new["Data"] = pd.to_datetime(df_new["Data"], errors="coerce", dayfirst=True, format="%d-%m-Y%")
+        df_new["Importo"] = pd.to_numeric(df_new["Importo"], errors="coerce")
+        df_new = df_new.dropna(subset=["Data", "Importo"]).sort_values("Data")
     
-    df_new = pd.read_excel(uploaded_file, sheet_name="Lista Operazione", header=header_row)
-    df_new = df_new.rename(columns=lambda x: x.strip())
-    df_new = df_new[["Data", "Operazione", "Categoria", "Importo"]].copy()
-    
-    # Parse types
-    df_new["Data"] = pd.to_datetime(df_new["Data"], errors="coerce", dayfirst=True, format="%d-%m-Y%")
-    df_new["Importo"] = pd.to_numeric(df_new["Importo"], errors="coerce")
-    df_new = df_new.dropna(subset=["Data", "Importo"]).sort_values("Data")
-    
-    # --- Merge with Master and Drop Duplicates ---
-    combined_df = pd.concat([master_df, df_new], ignore_index=True)
-    combined_df = combined_df.sort_values("Data").reset_index(drop=True)
+        # --- Merge with Master and Drop Duplicates ---
+        combined_df = pd.concat([combined_df, df_new], ignore_index=True)
+        combined_df = combined_df.sort_values("Data").reset_index(drop=True)
 
     # --- Detect Salary-Based Months ---
     salary_df = combined_df[combined_df["Categoria"] == "Stipendi e pensioni"].copy()
@@ -200,9 +210,18 @@ if uploaded_file:
         st.dataframe(styled_df, use_container_width=True)
     
     # --------------------------
-    # Save Updated Master
+    # Save Updated Master with Confirmation
     # --------------------------
     if st.button("💾 Save Updated Data"):
-        combined_df.to_sql(TABLE_NAME, engine, if_exists="replace", index=False)
-        st.success("Master data saved successfully!")
-        st.success(f"Master data now has {len(combined_df)} total movements.")
+        st.warning("⚠️ This will overwrite the database with the current dataset. Are you sure?")
+        col_confirm, col_cancel = st.columns(2)
+
+        with col_confirm:
+            if st.button("✅ Confirm and Save"):
+                combined_df.to_sql(TABLE_NAME, engine, if_exists="replace", index=False)
+                st.success("Master data saved successfully!")
+                st.success(f"Master data now has {len(combined_df)} total movements.")
+
+        with col_cancel:
+            if st.button("❌ Cancel"):
+                st.info("Save operation canceled.")
