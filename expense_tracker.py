@@ -4,14 +4,60 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import os
 from sqlalchemy import create_engine
+import hashlib
+from supabase import create_client, Client
 
-st.set_page_config(page_title="Personal Expense Tracker", page_icon="image/byw_logo.png", layout="wide")
-st.title("📊 Personal Expense Tracker")
+st.set_page_config(page_title="Balance Your Way", page_icon="image/byw_logo.png", layout="wide")
 
-# MASTER_FILE = "transactions_master.parquet"
 db_url = st.secrets["DB_URL"]
 engine = create_engine(db_url)
 TABLE_NAME = "transactions"
+
+# Supabase Auth client
+supabase: Client = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+
+# ----------------------------
+# LOGIN / SIGNUP FUNCTIONS
+# ----------------------------
+def signup():
+    email = st.text_input("Email", key="signup_email")
+    password = st.text_input("Password", type="password", key="signup_password")
+    if st.button("Sign Up"):
+        try:
+            user = supabase.auth.sign_up({"email": email, "password": password})
+            st.success("✅ Account created! Please log in.")
+        except Exception as e:
+            st.error(f"❌ Signup failed: {e}")
+
+def login():
+    email = st.text_input("Email", key="login_email")
+    password = st.text_input("Password", type="password", key="login_password")
+    if st.button("Login"):
+        try:
+            user = supabase.auth.sign_in_with_password({"email": email, "password": password})
+            st.session_state.user = user.user
+            st.session_state.user_id = user.user.id
+            st.success("✅ Login successful!")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Login failed: {e}")
+
+# ----------------------------
+# AUTH FLOW
+# ----------------------------
+if "user" not in st.session_state:
+    st.title("🔐 Balance Your Way")
+    choice = st.radio("Choose an option:", ["Login", "Sign Up"])
+    if choice == "Login":
+        login()
+    elif choice == "Sign Up":
+        signup()
+    st.stop()
+
+# ----------------------------
+# MAIN APP (User logged in)
+# ----------------------------
+st.title(f"📊 Balance Your Way - Welcome {st.session_state.user.email}!")
 
 if "combined_df" not in st.session_state:
     st.session_state.combined_df = pd.DataFrame(columns=["Data", "Operazione", "Categoria", "Importo"])
@@ -30,6 +76,13 @@ else:
 # Use the session state version for all logic
 combined_df = st.session_state.combined_df
 
+# ----------------------------
+# LOGOUT
+# ----------------------------
+if st.sidebar.button("🚪 Logout"):
+    st.session_state.clear()
+    st.rerun()
+    
 # --------------------------
 # Upload New Data
 # --------------------------
