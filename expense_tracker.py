@@ -5,7 +5,7 @@ import plotly.express as px
 import os
 from sqlalchemy import create_engine
 
-st.set_page_config(page_title="Personal Expense Tracker", page_icon="byw_logo.png", layout="wide")
+st.set_page_config(page_title="Personal Expense Tracker", page_icon="image/byw_logo.png", layout="wide")
 st.title("📊 Personal Expense Tracker")
 
 # MASTER_FILE = "transactions_master.parquet"
