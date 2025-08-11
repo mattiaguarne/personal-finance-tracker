@@ -67,7 +67,7 @@ if "combined_df" not in st.session_state:
 # -----------------------------------
 
 if engine.dialect.has_table(engine.connect(), TABLE_NAME):
-    df_loaded = pd.read_sql(f"SELECT * FROM {TABLE_NAME}", engine)
+    df_loaded = pd.read_sql(f"SELECT * FROM {TABLE_NAME} WHERE USER_ID = '{st.session_state.user_id}'", engine)
     df_loaded["Data"] = pd.to_datetime(df_loaded["Data"], errors="coerce")
     st.session_state.combined_df = df_loaded
 else:
