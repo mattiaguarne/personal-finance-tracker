@@ -76,13 +76,6 @@ else:
 # Use the session state version for all logic
 combined_df = st.session_state.combined_df
 
-# ----------------------------
-# LOGOUT
-# ----------------------------
-if st.sidebar.button("🚪 Logout"):
-    st.session_state.clear()
-    st.rerun()
-    
 # --------------------------
 # Upload New Data
 # --------------------------
@@ -278,3 +271,10 @@ if uploaded_file or not combined_df.empty:
         with col_cancel:
             if st.button("❌ Cancel"):
                 st.info("Save operation canceled.")
+
+# ----------------------------
+# LOGOUT
+# ----------------------------
+if st.sidebar.button("🚪 Logout"):
+    st.session_state.clear()
+    st.rerun()
