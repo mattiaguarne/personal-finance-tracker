@@ -25,7 +25,7 @@ def signup():
     if st.button("Sign Up"):
         try:
             user = supabase.auth.sign_up({"email": email, "password": password})
-            st.success("✅ Account created! Please log in.")
+            st.success("✅ Account created! Please check out your e-mail.")
         except Exception as e:
             st.error(f"❌ Signup failed: {e}")
 
