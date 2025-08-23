@@ -3,7 +3,7 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import plotly.express as px
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import hashlib
 from supabase import create_client, Client
 
