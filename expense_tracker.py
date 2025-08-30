@@ -202,7 +202,7 @@ def app_ui():
         working_df["_hash"] = row_hash(working_df[["Data","Operazione","Categoria","Importo","user_id"]]) if not working_df.empty else pd.Series(dtype="int64")
         # Combine (but we will present the preview as replacement if user confirms save)
         temp = pd.concat([working_df, df_preview], ignore_index=True)
-        temp = temp.drop_duplicates(subset="_hash").drop(columns="_hash", errors="ignore").sort_values("Data").reset_index(drop=True)
+        temp = temp.(subset="_hash").drop(columns="_hash", errors="ignore").sort_values("Data").reset_index(drop=True)
         working_df = temp
 
     # If there is no data at all, show message
