@@ -172,13 +172,13 @@ def app_ui():
             cols_map = {}
             for c in df_preview.columns:
                 cn = str(c).strip().lower()
-                if "data" in cn or "date" in cn:
+                if "data" in cn or "date" in cn or "dato" in cn:
                     cols_map[c] = "Data"
-                elif "descr" in cn or "operaz" in cn or "operazione" in cn or "movimento" in cn:
+                elif "descr" in cn or "operaz" in cn or "operazione" in cn or "movimento" in cn or "tekst" in cn:
                     cols_map[c] = "Operazione"
-                elif "cat" in cn:
+                elif "cat" in cn or "kategory" in cn:
                     cols_map[c] = "Categoria"
-                elif "import" in cn or "amount" in cn:
+                elif "import" in cn or "amount" in cn or "beløb":
                     cols_map[c] = "Importo"
             df_preview = df_preview.rename(columns=cols_map)
             df_preview = df_preview[["Data", "Operazione", "Categoria", "Importo"]].copy()
