@@ -163,10 +163,12 @@ def app_ui():
             # try to find the header row dynamically like before
             # we'll attempt the common "Lista Operazione" sheet, else first
             sheet_to_use = "Lista Operazione" if "Lista Operazione" in sheet_names else sheet_names[0]
+            print(sheet_to_use)
             df_temp = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=None)
             header_row = df_temp.index[df_temp.iloc[:, 0].astype(str).str.contains("Data", na=False)][0]
             df_preview = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=header_row)
             df_preview = df_preview.rename(columns=lambda x: x.strip() if isinstance(x, str) else x)
+            print(df_preview)
             # normalize column names
             # required columns: Data, Operazione, Categoria, Importo (offer fallback names)
             cols_map = {}
