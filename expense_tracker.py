@@ -172,7 +172,7 @@ def app_ui():
             cols_map = {}
             for c in df_preview.columns:
                 cn = str(c).strip().lower()
-                if "data" in cn or "date" in cn or "dato" in cn:
+                if "data" in cn or "dato" in cn:
                     cols_map[c] = "Data"
                 elif "descr" in cn or "operaz" in cn or "operazione" in cn or "movimento" in cn: # or "tekst" in cn:
                     cols_map[c] = "Operazione"
