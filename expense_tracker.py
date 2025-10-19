@@ -6,6 +6,8 @@ import os
 from sqlalchemy import create_engine, text
 import hashlib
 from supabase import create_client, Client
+import re
+import unicodedata
 
 st.set_page_config(page_title="Balance Your Way", layout="wide")
 
@@ -153,35 +155,42 @@ def app_ui():
 
     # Upload + preview area
     st.subheader("Upload new Excel (full dataset)")
-    uploaded_file = st.file_uploader("Upload your bank Excel file (.xls/.xlsx)", type=["xls", "xlsx"])
+    uploaded_file = st.file_uploader("Upload your bank Excel file (.xls/.xlsx/.csv)", type=["xls", "xlsx","csv"])
     df_preview = None
     if uploaded_file is not None:
         try:
-            df_raw = pd.read_excel(uploaded_file, sheet_name=None)  # try read all sheets first
-            # heuristics: find a sheet with 'Data' header or fallback to first sheet
-            sheet_names = list(df_raw.keys())
-            # try to find the header row dynamically like before
-            # we'll attempt the common "Lista Operazione" sheet, else first
-            sheet_to_use = "Lista Operazione" if "Lista Operazione" in sheet_names else sheet_names[0]
-            print(sheet_to_use)
-            df_temp = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=None)
-            header_row = df_temp.index[df_temp.iloc[:, 0].astype(str).str.contains("Data", na=False)][0]
-            df_preview = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=header_row)
+            file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+            if file_ext == ".csv":
+                df_preview = pd.read_csv(uploaded_file)
+            else:
+                df_raw = pd.read_excel(uploaded_file, sheet_name=None)  # try read all sheets first
+                # heuristics: find a sheet with 'Data' header or fallback to first sheet
+                sheet_names = list(df_raw.keys())
+                # try to find the header row dynamically like before
+                # we'll attempt the common "Lista Operazione" sheet, else first
+                sheet_to_use = "Lista Operazione" if "Lista Operazione" in sheet_names else sheet_names[0]
+                df_temp = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=None)
+                header_row = df_temp.index[df_temp.iloc[:, 0].astype(str).str.contains("Dat", na=False)][0]
+                df_preview = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=header_row)
             df_preview = df_preview.rename(columns=lambda x: x.strip() if isinstance(x, str) else x)
-            print(df_preview)
             # normalize column names
             # required columns: Data, Operazione, Categoria, Importo (offer fallback names)
+            def match(cn, patterns):
+                return any(re.search(rf"\b{p}\b", cn) for p in patterns)
+
             cols_map = {}
+            used_targets = set()
+
             for c in df_preview.columns:
                 cn = str(c).strip().lower()
-                if "data" in cn or "dato" in cn:
-                    cols_map[c] = "Data"
-                elif "descr" in cn or "operaz" in cn or "operazione" in cn or "movimento" in cn: # or "tekst" in cn:
-                    cols_map[c] = "Operazione"
-                elif "cat" in cn: # or "kategory" in cn:
-                    cols_map[c] = "Categoria"
-                elif "import" in cn or "amount" in cn: # or "beløb":
-                    cols_map[c] = "Importo"
+                if match(cn, ["data", "dato", "date"]) and "Data" not in used_targets:
+                    cols_map[c] = "Data"; used_targets.add("Data")
+                elif match(cn, ["descr", "operaz", "operazione", "movimento", "tekst"]) and "Operazione" not in used_targets:
+                    cols_map[c] = "Operazione"; used_targets.add("Operazione")
+                elif match(cn, ["cat", "kategori"]) and "Categoria" not in used_targets:
+                    cols_map[c] = "Categoria"; used_targets.add("Categoria")
+                elif match(cn, ["import", "amount", "beløb"]) and "Importo" not in used_targets:
+                    cols_map[c] = "Importo"; used_targets.add("Importo")
             df_preview = df_preview.rename(columns=cols_map)
             df_preview = df_preview[["Data", "Operazione", "Categoria", "Importo"]].copy()
             df_preview["Data"] = pd.to_datetime(df_preview["Data"], errors="coerce", dayfirst=True)
@@ -213,7 +222,7 @@ def app_ui():
     # Sidebar: period selection, same as before
     if not working_df.empty:
         # detect salary-based months
-        salary_df = working_df[working_df["Categoria"] == "Stipendi e pensioni"].copy()
+        salary_df = working_df[working_df["Categoria"].astype(str).str.strip().isin(["Stipendi e pensioni", "Løn og pension"])].copy()
         salary_df["YearMonth"] = salary_df["Data"].dt.to_period("M")
         salary_periods = salary_df.groupby("YearMonth")["Data"].min().sort_values().reset_index(drop=True)
 
@@ -222,7 +231,7 @@ def app_ui():
             return past_periods.max() if len(past_periods) else pd.NaT
 
         working_df["PersonalMonthStart"] = working_df["Data"].apply(assign_personal_month)
-        working_df["PeriodName"] = working_df["PersonalMonthStart"].dt.strftime("%Y_%m_%b")#dt.strftime("%Y_%m_%b")
+        working_df["PeriodName"] = working_df["PersonalMonthStart"].dt.strftime("%Y_%m_%b")
 
         st.sidebar.header("Filters")
         available_periods = (
