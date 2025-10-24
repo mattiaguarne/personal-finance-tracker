@@ -153,28 +153,40 @@ def app_ui():
             st.error(f"Could not load DB data: {e}")
             st.session_state.combined_df = pd.DataFrame(columns=["Data", "Operazione", "Categoria", "Importo", "user_id"])
 
-    # Upload + preview area
-    st.subheader("Upload new Excel (full dataset)")
-    uploaded_file = st.file_uploader("Upload your bank Excel file (.xls/.xlsx/.csv)", type=["xls", "xlsx","csv"])
+    st.subheader("Upload new Excel or CSV (full dataset)")
+    uploaded_file = st.file_uploader("Upload your bank file (.xls/.xlsx/.csv)", type=["xls", "xlsx", "csv"])
     df_preview = None
+    currency = st.selectbox("Select currency", options=["EUR", "DKK"], index=0)
+    symbol = "€" if currency == "EUR" else "kr"
+
+
     if uploaded_file is not None:
         try:
             file_ext = os.path.splitext(uploaded_file.name)[1].lower()
+
+            # Load CSV
             if file_ext == ".csv":
-                df_preview = pd.read_csv(uploaded_file)
+                df_preview = pd.read_csv(
+                    uploaded_file,
+                    sep=";",
+                    encoding="ISO-8859-1",
+                    quotechar='"',
+                    skip_blank_lines=True
+                )
+
+            # Load Excel
             else:
-                df_raw = pd.read_excel(uploaded_file, sheet_name=None)  # try read all sheets first
-                # heuristics: find a sheet with 'Data' header or fallback to first sheet
+                df_raw = pd.read_excel(uploaded_file, sheet_name=None)
                 sheet_names = list(df_raw.keys())
-                # try to find the header row dynamically like before
-                # we'll attempt the common "Lista Operazione" sheet, else first
                 sheet_to_use = "Lista Operazione" if "Lista Operazione" in sheet_names else sheet_names[0]
                 df_temp = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=None)
                 header_row = df_temp.index[df_temp.iloc[:, 0].astype(str).str.contains("Dat", na=False)][0]
                 df_preview = pd.read_excel(uploaded_file, sheet_name=sheet_to_use, header=header_row)
-            df_preview = df_preview.rename(columns=lambda x: x.strip() if isinstance(x, str) else x)
-            # normalize column names
-            # required columns: Data, Operazione, Categoria, Importo (offer fallback names)
+
+            # Strip column names
+            df_preview.columns = df_preview.columns.str.strip()
+
+            # Column mapping logic
             def match(cn, patterns):
                 return any(re.search(rf"\b{p}\b", cn) for p in patterns)
 
@@ -191,15 +203,38 @@ def app_ui():
                     cols_map[c] = "Categoria"; used_targets.add("Categoria")
                 elif match(cn, ["import", "amount", "beløb"]) and "Importo" not in used_targets:
                     cols_map[c] = "Importo"; used_targets.add("Importo")
+
             df_preview = df_preview.rename(columns=cols_map)
+
+            # Select and clean relevant columns
             df_preview = df_preview[["Data", "Operazione", "Categoria", "Importo"]].copy()
+
+            # Convert date
             df_preview["Data"] = pd.to_datetime(df_preview["Data"], errors="coerce", dayfirst=True)
-            df_preview["Importo"] = pd.to_numeric(df_preview["Importo"], errors="coerce")
+
+            # Convert European-style numbers to float
+            df_preview["Importo"] = (
+                df_preview["Importo"]
+                .astype(str)
+                .str.replace(".", "", regex=False)  # remove thousand separator
+                .str.replace(",", ".", regex=False)  # convert decimal comma to dot
+                .astype(float)
+            )
+
+            # Clean text columns
+            df_preview["Operazione"] = df_preview["Operazione"].astype(str).str.strip()
+            df_preview["Categoria"] = df_preview["Categoria"].astype(str).str.strip()
+
+            # Final cleanup
             df_preview = df_preview.dropna(subset=["Data", "Importo"]).sort_values("Data").reset_index(drop=True)
+
             st.success(f"Preview loaded — {len(df_preview)} rows ready.")
+
         except Exception as e:
             st.error(f"Could not parse uploaded file automatically: {e}")
             df_preview = None
+
+
 
     # Merge preview into combined view for inspection but don't persist until Save confirmed
     combined_df = st.session_state.get("combined_df", pd.DataFrame(columns=["Data","Operazione","Categoria","Importo","user_id"]))
@@ -260,12 +295,13 @@ def app_ui():
         total_savings = df.loc[(df["Importo"] < 0) & (df["Categoria"].str.contains("Risparmi", case=False, na=False)), "Importo"].sum()
 
         st.subheader("💰 Summary")
-        c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Total Expenses", f"{total_expenses:,.2f} €")
-        c2.metric("Total Income", f"{total_income:,.2f} €")
-        c3.metric("Net for Selection", f"{(total_income + total_expenses):,.2f} €")
-        c4.metric("Investments", f"{total_investments:,.2f} €")
-        c5.metric("Savings", f"{total_savings:,.2f} €")
+        c1, c2, c3 = st.columns(3)
+        c4, c5 = st.columns(2)
+        c1.metric("Total Expenses", f"{total_expenses:,.2f} {symbol}")
+        c2.metric("Total Income", f"{total_income:,.2f} {symbol}")
+        c3.metric("Net for Selection", f"{(total_income + total_expenses):,.2f} {symbol}")
+        c4.metric("Investments", f"{total_investments:,.2f} {symbol}")
+        c5.metric("Savings", f"{total_savings:,.2f} {symbol}")
 
         # Pie & bar charts (exclude investments/savings)
         df_charts = df[
